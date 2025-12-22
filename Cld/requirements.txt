@@ -1,0 +1,15 @@
+fastapi==0.124.2
+uvicorn==0.38.0
+sqlalchemy==2.0.45
+geopandas==1.1.1
+alembic==1.17.2
+pydantic==2.12.4
+python-multipart==0.0.9
+geopy==2.4.1
+scikit-learn==1.6.0
+numpy==2.3.3
+pandas==2.3.3
+pyogrio==0.12.1
+pyproj==3.7.2
+shapely==2.1.2
+nest-asyncio==1.6.0

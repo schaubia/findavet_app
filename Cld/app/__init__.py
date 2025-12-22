@@ -1,0 +1,1 @@
+"""Sofia Vet Platform Application Package"""
