@@ -14,6 +14,261 @@ st.set_page_config(
     layout="wide"
 )
 
+# Translation dictionary
+TRANSLATIONS = {
+    'en': {
+        # Page titles
+        'app_title': 'Sofia Vet Platform',
+        'app_subtitle': 'Find the best veterinary clinic for your pet',
+        'navigation': 'Navigation',
+        'search_clinics': 'Search Clinics',
+        'add_clinic': 'Add Clinic',
+        'add_review': 'Add Review',
+        'view_all_clinics': 'View All Clinics',
+        
+        # Search page
+        'search_header': 'Search for Veterinary Clinics',
+        'your_location': 'Your Location (Optional)',
+        'location_help': 'Enter your location to find the nearest clinics and see distances',
+        'your_latitude': 'Your Latitude',
+        'your_longitude': 'Your Longitude',
+        'max_distance': 'Max Distance (km)',
+        'search_by_location': 'Search by location (find nearest clinics)',
+        'search_filters': 'Search Filters',
+        'quick_searches': 'Quick Searches (Click to auto-fill)',
+        'common_searches': 'Common Searches:',
+        'hotels_btn': 'Hotels',
+        'vaccination_btn': 'Vaccination',
+        'diagnostics_btn': 'Diagnostics',
+        'emergency_btn': 'Emergency',
+        'services': 'Services',
+        'equipment': 'Equipment',
+        'available': 'available',
+        'select_services': 'Select services (leave empty for all)',
+        'select_equipment': 'Select equipment (leave empty for all)',
+        'service_help': 'Select one or more services you\'re looking for',
+        'equipment_help': 'Select equipment the clinic should have',
+        'emergency_care': 'Emergency Care',
+        'inpatient_care': 'Inpatient Care',
+        'wild_animal_care': 'Wild Animal Care',
+        'minimum_rating': 'Minimum rating',
+        'search_btn': 'Search',
+        'clear_btn': 'Clear',
+        'found_clinics': 'Found {count} clinic(s)',
+        'active_filters': 'Active Filters:',
+        'rating_filter': 'Rating',
+        'clinic_locations': 'Clinic Locations',
+        'clinic_details': 'Clinic Details',
+        'no_clinics_found': 'No clinics found matching your criteria',
+        'adjust_filters': 'Try adjusting your search filters or expanding the search radius.',
+        'use_search_filters': 'Use the search filters above and click \'Search\' to find veterinary clinics',
+        'km_away': '{distance:.2f} km away',
+        
+        # Clinic details
+        'contact_info': 'Contact Information',
+        'address': 'Address',
+        'phone': 'Phone',
+        'email': 'Email',
+        'location': 'Location',
+        'coordinates': 'Coordinates',
+        'distance_from_you': 'Distance from you',
+        'services_offered': 'Services Offered',
+        'equipment_available': 'Equipment Available',
+        'lab_tests': 'Laboratory Tests',
+        'not_specified': 'Not specified',
+        'and_more': '...and {count} more',
+        'standard_care': 'Standard Care',
+        
+        # Add clinic page
+        'register_clinic': 'Register New Clinic',
+        'basic_info': 'Basic Information',
+        'clinic_name': 'Clinic Name*',
+        'clinic_name_placeholder': 'e.g., Sofia Pet Care',
+        'address_placeholder': 'e.g., 123 Main St, Sofia',
+        'phone_placeholder': 'e.g., +359 2 123 4567',
+        'email_placeholder': 'e.g., info@sofiavetcare.com',
+        'latitude': 'Latitude',
+        'longitude': 'Longitude',
+        'care_types': 'Care Types Available',
+        'services_offered_label': 'Services Offered',
+        'other_services': 'Other Services (comma-separated)',
+        'other_services_placeholder': 'e.g., behavioral training, nutritional counseling',
+        'equipment_available_label': 'Equipment Available',
+        'other_equipment': 'Other Equipment (comma-separated)',
+        'other_equipment_placeholder': 'e.g., ECG machine, anesthesia machine',
+        'lab_tests_label': 'Laboratory Tests Available',
+        'lab_tests_placeholder': 'Blood tests\nUrine analysis\nFecal examination\nBiochemistry panel\nX-ray imaging\nUltrasound diagnostics',
+        'register_btn': 'Register Clinic',
+        'clinic_registered': 'Clinic \'{name}\' registered successfully!',
+        'added_items': 'Added {services} services, {equipment} equipment items, and {tests} lab tests.',
+        'fill_required': 'Please fill in all required fields (marked with *)',
+        'registration_error': 'Error registering clinic: {error}',
+        'check_db': 'Please check if the database has the correct structure. Try deleting vet_platform.db and restart the app.',
+        
+        # Review page
+        'add_review_header': 'Add a Review',
+        'select_clinic': 'Select Clinic',
+        'rating': 'Rating',
+        'your_review': 'Your review',
+        'review_placeholder': 'Share your experience...',
+        'submit_review': 'Submit Review',
+        'review_submitted': 'Review submitted successfully!',
+        'no_clinics_yet': 'No clinics available yet. Please add a clinic first.',
+        
+        # View all page
+        'all_clinics_header': 'All Registered Clinics',
+        'clinics_list': 'Clinics List',
+        'clinic_name_col': 'Clinic Name',
+        'address_col': 'Address',
+        'phone_col': 'Phone',
+        'rating_col': 'Rating',
+        'care_types_col': 'Care Types Available',
+        'detailed_info': 'Detailed Clinic Information',
+        'select_clinic_details': 'Select a clinic to view details:',
+        'clinic_location': 'Clinic Location',
+        'platform_stats': 'Platform Statistics',
+        'total_clinics': 'Total Clinics',
+        'average_rating': 'Average Rating',
+        'emergency_clinics': 'Emergency Clinics',
+        'inpatient_clinics': 'Inpatient Care',
+        'no_clinics_registered': 'No clinics registered yet. Add your first clinic!',
+        
+        # About
+        'about': 'About',
+        'about_text': 'Sofia Vet Platform - Find the best veterinary care for your pet. Search clinics by services, location, and ratings.',
+    },
+    'bg': {
+        # Page titles
+        'app_title': 'София Вет Платформа',
+        'app_subtitle': 'Намерете най-добрата ветеринарна клиника за вашия любимец',
+        'navigation': 'Навигация',
+        'search_clinics': 'Търсене на клиники',
+        'add_clinic': 'Добави клиника',
+        'add_review': 'Добави отзив',
+        'view_all_clinics': 'Всички клиники',
+        
+        # Search page
+        'search_header': 'Търсене на ветеринарни клиники',
+        'your_location': 'Вашето местоположение (по избор)',
+        'location_help': 'Въведете вашето местоположение, за да намерите най-близките клиники и да видите разстоянията',
+        'your_latitude': 'Вашата географскаширина',
+        'your_longitude': 'Вашата географска дължина',
+        'max_distance': 'Макс. разстояние (км)',
+        'search_by_location': 'Търсене по местоположение (намери най-близки клиники)',
+        'search_filters': 'Филтри за търсене',
+        'quick_searches': 'Бързо търсене (Кликнете за автоматично попълване)',
+        'common_searches': 'Често търсени:',
+        'hotels_btn': 'Хотели',
+        'vaccination_btn': 'Ваксинация',
+        'diagnostics_btn': 'Диагностика',
+        'emergency_btn': 'Спешни',
+        'services': 'Услуги',
+        'equipment': 'Оборудване',
+        'available': 'налични',
+        'select_services': 'Изберете услуги (оставете празно за всички)',
+        'select_equipment': 'Изберете оборудване (оставете празно за всички)',
+        'service_help': 'Изберете една или повече услуги, които търсите',
+        'equipment_help': 'Изберете оборудването, което клиниката трябва да има',
+        'emergency_care': 'Спешна помощ',
+        'inpatient_care': 'Болнична грижа',
+        'wild_animal_care': 'Грижа за диви животни',
+        'minimum_rating': 'Минимална оценка',
+        'search_btn': 'Търси',
+        'clear_btn': 'Изчисти',
+        'found_clinics': 'Намерени {count} клиники',
+        'active_filters': 'Активни филтри:',
+        'rating_filter': 'Оценка',
+        'clinic_locations': 'Местоположения на клиники',
+        'clinic_details': 'Детайли за клиниките',
+        'no_clinics_found': 'Не са намерени клиники, отговарящи на критериите',
+        'adjust_filters': 'Опитайте да промените филтрите за търсене или да увеличите радиуса на търсене.',
+        'use_search_filters': 'Използвайте филтрите по-горе и натиснете \'Търси\', за да намерите ветеринарни клиники',
+        'km_away': '{distance:.2f} км разстояние',
+        
+        # Clinic details
+        'contact_info': 'Информация за контакт',
+        'address': 'Адрес',
+        'phone': 'Телефон',
+        'email': 'Имейл',
+        'location': 'Местоположение',
+        'coordinates': 'Координати',
+        'distance_from_you': 'Разстояние от вас',
+        'services_offered': 'Предлагани услуги',
+        'equipment_available': 'Налично оборудване',
+        'lab_tests': 'Лабораторни изследвания',
+        'not_specified': 'Не е посочено',
+        'and_more': '...и още {count}',
+        'standard_care': 'Стандартна грижа',
+        
+        # Add clinic page
+        'register_clinic': 'Регистрирай нова клиника',
+        'basic_info': 'Основна информация',
+        'clinic_name': 'Име на клиниката*',
+        'clinic_name_placeholder': 'напр., София Пет Кеър',
+        'address_placeholder': 'напр., ул. Главна 123, София',
+        'phone_placeholder': 'напр., +359 2 123 4567',
+        'email_placeholder': 'напр., info@sofiavetcare.com',
+        'latitude': 'Географска широчина',
+        'longitude': 'Географска дължина',
+        'care_types': 'Видове грижи',
+        'services_offered_label': 'Предлагани услуги',
+        'other_services': 'Други услуги (разделени със запетая)',
+        'other_services_placeholder': 'напр., поведенческо обучение, хранителни консултации',
+        'equipment_available_label': 'Налично оборудване',
+        'other_equipment': 'Друго оборудване (разделено със запетая)',
+        'other_equipment_placeholder': 'напр., ЕКГ апарат, апарат за анестезия',
+        'lab_tests_label': 'Налични лабораторни изследвания',
+        'lab_tests_placeholder': 'Кръвни изследвания\nУринен анализ\nИзследване на фецес\nБиохимичен панел\nРентгенови снимки\nУлтразвукова диагностика',
+        'register_btn': 'Регистрирай клиника',
+        'clinic_registered': 'Клиниката \'{name}\' е регистрирана успешно!',
+        'added_items': 'Добавени {services} услуги, {equipment} единици оборудване и {tests} лабораторни изследвания.',
+        'fill_required': 'Моля, попълнете всички задължителни полета (означени с *)',
+        'registration_error': 'Грешка при регистрация на клиника: {error}',
+        'check_db': 'Моля, проверете дали базата данни има правилната структура. Опитайте да изтриете vet_platform.db и рестартирайте приложението.',
+        
+        # Review page
+        'add_review_header': 'Добави отзив',
+        'select_clinic': 'Изберете клиника',
+        'rating': 'Оценка',
+        'your_review': 'Вашият отзив',
+        'review_placeholder': 'Споделете вашия опит...',
+        'submit_review': 'Изпрати отзив',
+        'review_submitted': 'Отзивът е изпратен успешно!',
+        'no_clinics_yet': 'Все още няма налични клиники. Моля, първо добавете клиника.',
+        
+        # View all page
+        'all_clinics_header': 'Всички регистрирани клиники',
+        'clinics_list': 'Списък на клиниките',
+        'clinic_name_col': 'Име на клиниката',
+        'address_col': 'Адрес',
+        'phone_col': 'Телефон',
+        'rating_col': 'Оценка',
+        'care_types_col': 'Налични видове грижи',
+        'detailed_info': 'Подробна информация за клиниката',
+        'select_clinic_details': 'Изберете клиника за детайли:',
+        'clinic_location': 'Местоположение на клиниката',
+        'platform_stats': 'Статистики на платформата',
+        'total_clinics': 'Общо клиники',
+        'average_rating': 'Средна оценка',
+        'emergency_clinics': 'Спешни клиники',
+        'inpatient_clinics': 'Болнична грижа',
+        'no_clinics_registered': 'Все още няма регистрирани клиники. Добавете първата си клиника!',
+        
+        # About
+        'about': 'За нас',
+        'about_text': 'София Вет Платформа - Намерете най-добрата ветеринарна грижа за вашия любимец. Търсете клиники по услуги, местоположение и оценки.',
+    }
+}
+
+def t(key, lang=None, **kwargs):
+    """Translation helper function"""
+    if lang is None:
+        lang = st.session_state.get('language', 'en')
+    text = TRANSLATIONS.get(lang, TRANSLATIONS['en']).get(key, key)
+    if kwargs:
+        return text.format(**kwargs)
+    return text
+
 # Database connection
 DB_PATH = "vet_platform.db"
 
@@ -196,17 +451,42 @@ def init_db():
 # Initialize database
 init_db()
 
+# Initialize session state for language
+if 'language' not in st.session_state:
+    st.session_state.language = 'en'
+
+# Language selector in sidebar
+st.sidebar.markdown("---")
+col_lang1, col_lang2 = st.sidebar.columns(2)
+with col_lang1:
+    if st.button("🇬🇧 English", use_container_width=True, type="primary" if st.session_state.language == 'en' else "secondary"):
+        st.session_state.language = 'en'
+        st.rerun()
+with col_lang2:
+    if st.button("🇧🇬 Български", use_container_width=True, type="primary" if st.session_state.language == 'bg' else "secondary"):
+        st.session_state.language = 'bg'
+        st.rerun()
+
+st.sidebar.markdown("---")
+
+# Get current language
+lang = st.session_state.language
+
 # Title
-st.title("🐱 Sofia Vet Platform")
-st.markdown("### Find the best veterinary clinic for your pet")
+st.title(f"🐱 {t('app_title', lang)}")
+st.markdown(f"### {t('app_subtitle', lang)}")
 
 # Sidebar for navigation
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Search Clinics", "Add Clinic", "Add Review", "View All Clinics"])
+st.sidebar.title(t('navigation', lang))
+page = st.sidebar.radio(
+    t('navigation', lang), 
+    [t('search_clinics', lang), t('add_clinic', lang), t('add_review', lang), t('view_all_clinics', lang)],
+    label_visibility="collapsed"
+)
 
 # Search Clinics Page
-if page == "Search Clinics":
-    st.header("🔍 Search for Veterinary Clinics")
+if page == t('search_clinics', lang):
+    st.header(f"🔍 {t('search_header', lang)}")
     
     # Initialize session state for search results
     if 'search_results' not in st.session_state:
@@ -215,21 +495,21 @@ if page == "Search Clinics":
         st.session_state.search_user_location = None
     
     # Location input section
-    st.subheader("📍 Your Location (Optional)")
-    st.markdown("*Enter your location to find the nearest clinics and see distances*")
+    st.subheader(f"📍 {t('your_location', lang)}")
+    st.markdown(f"*{t('location_help', lang)}*")
     
     col_loc1, col_loc2, col_loc3 = st.columns([2, 2, 1])
     
     with col_loc1:
-        user_lat = st.number_input("Your Latitude", value=42.6977, format="%.6f", help="Sofia center: 42.6977")
+        user_lat = st.number_input(t('your_latitude', lang), value=42.6977, format="%.6f", help="Sofia center: 42.6977")
     
     with col_loc2:
-        user_lon = st.number_input("Your Longitude", value=23.3219, format="%.6f", help="Sofia center: 23.3219")
+        user_lon = st.number_input(t('your_longitude', lang), value=23.3219, format="%.6f", help="Sofia center: 23.3219")
     
     with col_loc3:
-        max_distance = st.number_input("Max Distance (km)", value=50.0, min_value=1.0, max_value=200.0, step=5.0)
+        max_distance = st.number_input(t('max_distance', lang), value=50.0, min_value=1.0, max_value=200.0, step=5.0)
     
-    use_location = st.checkbox("🎯 Search by location (find nearest clinics)", value=False)
+    use_location = st.checkbox(f"🎯 {t('search_by_location', lang)}", value=False)
     
     st.markdown("---")
     
