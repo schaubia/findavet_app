@@ -3,6 +3,9 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import os
+import folium
+from streamlit_folium import st_folium
+from geopy.distance import geodesic
 
 # Page configuration
 st.set_page_config(
@@ -19,6 +22,88 @@ def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate distance between two coordinates in kilometers"""
+    try:
+        return geodesic((lat1, lon1), (lat2, lon2)).kilometers
+    except:
+        return None
+
+def create_clinic_map(clinics_df, user_location=None, zoom_start=12):
+    """Create a folium map with clinic markers"""
+    # Default center (Sofia, Bulgaria)
+    center_lat = 42.6977
+    center_lon = 23.3219
+    
+    if user_location:
+        center_lat, center_lon = user_location
+    elif len(clinics_df) > 0:
+        center_lat = clinics_df['latitude'].mean()
+        center_lon = clinics_df['longitude'].mean()
+    
+    # Create map
+    m = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=zoom_start,
+        tiles='OpenStreetMap'
+    )
+    
+    # Add user location marker if provided
+    if user_location:
+        folium.Marker(
+            location=user_location,
+            popup="Your Location",
+            tooltip="You are here",
+            icon=folium.Icon(color='red', icon='home', prefix='fa')
+        ).add_to(m)
+    
+    # Add clinic markers
+    for _, clinic in clinics_df.iterrows():
+        if pd.notna(clinic['latitude']) and pd.notna(clinic['longitude']):
+            # Create popup content
+            popup_html = f"""
+            <div style="width: 250px;">
+                <h4>{clinic['name']}</h4>
+                <p><b>Rating:</b> ⭐ {clinic['rating']:.1f}</p>
+                <p><b>Address:</b> {clinic['address']}</p>
+                <p><b>Phone:</b> {clinic['phone']}</p>
+            """
+            
+            if 'distance' in clinic and pd.notna(clinic['distance']):
+                popup_html += f"<p><b>Distance:</b> {clinic['distance']:.2f} km</p>"
+            
+            # Add care type badges
+            badges = []
+            if clinic.get('emergency_available', 0):
+                badges.append('🚨 Emergency')
+            if clinic.get('inpatient_care', 0):
+                badges.append('🏨 Inpatient')
+            if clinic.get('wild_animal_care', 0):
+                badges.append('🦊 Wild Animal')
+            
+            if badges:
+                popup_html += f"<p><b>Care Types:</b><br>{'<br>'.join(badges)}</p>"
+            
+            popup_html += "</div>"
+            
+            # Choose marker color based on rating
+            if clinic['rating'] >= 4.5:
+                color = 'green'
+            elif clinic['rating'] >= 3.5:
+                color = 'blue'
+            else:
+                color = 'gray'
+            
+            # Add marker
+            folium.Marker(
+                location=[clinic['latitude'], clinic['longitude']],
+                popup=folium.Popup(popup_html, max_width=300),
+                tooltip=clinic['name'],
+                icon=folium.Icon(color=color, icon='plus', prefix='fa')
+            ).add_to(m)
+    
+    return m
 
 def get_table_columns(table_name):
     """Get column names for a table"""
@@ -123,6 +208,26 @@ page = st.sidebar.radio("Go to", ["Search Clinics", "Add Clinic", "Add Review", 
 if page == "Search Clinics":
     st.header("🔍 Search for Veterinary Clinics")
     
+    # Location input section
+    st.subheader("📍 Your Location (Optional)")
+    st.markdown("*Enter your location to find the nearest clinics and see distances*")
+    
+    col_loc1, col_loc2, col_loc3 = st.columns([2, 2, 1])
+    
+    with col_loc1:
+        user_lat = st.number_input("Your Latitude", value=42.6977, format="%.6f", help="Sofia center: 42.6977")
+    
+    with col_loc2:
+        user_lon = st.number_input("Your Longitude", value=23.3219, format="%.6f", help="Sofia center: 23.3219")
+    
+    with col_loc3:
+        max_distance = st.number_input("Max Distance (km)", value=50.0, min_value=1.0, max_value=200.0, step=5.0)
+    
+    use_location = st.checkbox("🎯 Search by location (find nearest clinics)", value=False)
+    
+    st.markdown("---")
+    
+    # Search filters
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -171,15 +276,38 @@ if page == "Search Clinics":
         query += " AND c.rating >= ?"
         params.append(min_rating)
         
-        query += " GROUP BY c.id ORDER BY c.rating DESC"
+        query += " GROUP BY c.id"
         
         results = pd.read_sql_query(query, conn, params=params)
         conn.close()
         
+        # Calculate distances if location search is enabled
+        if use_location and len(results) > 0:
+            results['distance'] = results.apply(
+                lambda row: calculate_distance(user_lat, user_lon, row['latitude'], row['longitude']),
+                axis=1
+            )
+            # Filter by max distance
+            results = results[results['distance'] <= max_distance]
+            # Sort by distance
+            results = results.sort_values('distance')
+        else:
+            # Sort by rating if not using location
+            results = results.sort_values('rating', ascending=False)
+        
         if len(results) > 0:
             st.success(f"Found {len(results)} clinic(s)")
             
-            for _, clinic in results.iterrows():
+            # Display map
+            st.subheader("🗺️ Clinic Locations")
+            user_location = (user_lat, user_lon) if use_location else None
+            clinic_map = create_clinic_map(results, user_location=user_location)
+            st_folium(clinic_map, width=None, height=500)
+            
+            st.markdown("---")
+            st.subheader("📋 Clinic Details")
+            
+            for idx, (_, clinic) in enumerate(results.iterrows(), 1):
                 # Create care type badges
                 care_badges = []
                 if clinic.get('emergency_available', 0):
@@ -191,7 +319,13 @@ if page == "Search Clinics":
                 
                 badge_str = " | ".join(care_badges) if care_badges else "Standard Care"
                 
-                with st.expander(f"⭐ {clinic['name']} - Rating: {clinic['rating']:.1f} | {badge_str}"):
+                # Add distance to title if available
+                title = f"#{idx} ⭐ {clinic['name']} - Rating: {clinic['rating']:.1f}"
+                if 'distance' in clinic and pd.notna(clinic['distance']):
+                    title += f" | 📍 {clinic['distance']:.2f} km away"
+                title += f" | {badge_str}"
+                
+                with st.expander(title):
                     # Contact Info
                     st.markdown("#### 📍 Contact Information")
                     col1, col2 = st.columns(2)
@@ -203,6 +337,8 @@ if page == "Search Clinics":
                     with col2:
                         st.write(f"**Email:** {clinic['email']}")
                         st.write(f"**Location:** {clinic['latitude']:.4f}, {clinic['longitude']:.4f}")
+                        if 'distance' in clinic and pd.notna(clinic['distance']):
+                            st.write(f"**Distance from you:** {clinic['distance']:.2f} km")
                     
                     st.markdown("---")
                     
@@ -490,6 +626,13 @@ elif page == "View All Clinics":
     conn.close()
     
     if len(clinics) > 0:
+        # Display map first
+        st.subheader("🗺️ All Clinic Locations")
+        all_clinics_map = create_clinic_map(clinics, zoom_start=11)
+        st_folium(all_clinics_map, width=None, height=500)
+        
+        st.markdown("---")
+        
         # Add care type columns for display
         clinics['care_types'] = clinics.apply(
             lambda row: ', '.join([
@@ -501,6 +644,7 @@ elif page == "View All Clinics":
         )
         
         # Display main table
+        st.subheader("📋 Clinics List")
         display_cols = ['name', 'address', 'phone', 'rating', 'care_types']
         st.dataframe(
             clinics[display_cols], 
@@ -527,6 +671,14 @@ elif page == "View All Clinics":
         if selected_clinic_name:
             clinic = clinics[clinics['name'] == selected_clinic_name].iloc[0]
             
+            # Show map for individual clinic
+            if pd.notna(clinic['latitude']) and pd.notna(clinic['longitude']):
+                st.markdown("#### 📍 Clinic Location")
+                clinic_df = pd.DataFrame([clinic])
+                single_clinic_map = create_clinic_map(clinic_df, zoom_start=15)
+                st_folium(single_clinic_map, width=None, height=300)
+                st.markdown("---")
+            
             col1, col2 = st.columns(2)
             
             with col1:
@@ -535,6 +687,7 @@ elif page == "View All Clinics":
                 st.write(f"Phone: {clinic['phone']}")
                 st.write(f"Email: {clinic['email']}")
                 st.write(f"Rating: ⭐ {clinic['rating']:.1f}")
+                st.write(f"Coordinates: {clinic['latitude']:.6f}, {clinic['longitude']:.6f}")
                 
                 st.markdown("**🏥 Care Types**")
                 st.write(clinic['care_types'])
