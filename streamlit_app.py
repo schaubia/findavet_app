@@ -98,6 +98,25 @@ TRANSLATIONS = {
         'other_equipment_placeholder': 'e.g., ECG machine, anesthesia machine',
         'lab_tests_label': 'Laboratory Tests Available',
         'lab_tests_placeholder': 'Blood tests\nUrine analysis\nFecal examination\nBiochemistry panel\nX-ray imaging\nUltrasound diagnostics',
+        
+        # Service name translations
+        'service_cat_hotel': 'Cat Hotel',
+        'service_dog_hotel': 'Dog Hotel',
+        'service_grooming': 'Grooming',
+        'service_deworming': 'Deworming',
+        'service_prophylaxis': 'Prophylaxis',
+        'service_dental_care': 'Dental Care',
+        'service_surgery': 'Surgery',
+        'service_vaccination': 'Vaccination',
+        'service_ophthalmology': 'Ophthalmology',
+        'service_microchipping': 'Microchipping',
+        'service_travel_documents': 'Travel Documents',
+        
+        # Equipment name translations
+        'equipment_xray': 'X-Ray',
+        'equipment_ultrasound': 'Ultrasound',
+        'equipment_incubator': 'Incubator',
+        'equipment_oxygen': 'Oxygen Machine',
         'register_btn': 'Register Clinic',
         'clinic_registered': 'Clinic \'{name}\' registered successfully!',
         'added_items': 'Added {services} services, {equipment} equipment items, and {tests} lab tests.',
@@ -219,6 +238,27 @@ TRANSLATIONS = {
         'other_equipment_placeholder': 'напр., ЕКГ апарат, апарат за анестезия',
         'lab_tests_label': 'Налични лабораторни изследвания',
         'lab_tests_placeholder': 'Кръвни изследвания\nУринен анализ\nИзследване на фецес\nБиохимичен панел\nРентгенови снимки\nУлтразвукова диагностика',
+        
+        # Service name translations
+        'service_cat_hotel': 'Котешки хотел',
+        'service_dog_hotel': 'Кучешки хотел',
+        'service_grooming': 'Груминг',
+        'service_deworming': 'Обезпаразитяване',
+        'service_prophylaxis': 'Профилактика',
+        'service_dental_care': 'Дентална грижа',
+        'service_surgery': 'Хирургия',
+        'service_vaccination': 'Ваксинация',
+        'service_ophthalmology': 'Офталмология',
+        'service_microchipping': 'Чипиране',
+        'service_travel_documents': 'Пътни документи',
+        
+        # Equipment name translations
+        'equipment_xray': 'Рентген',
+        'equipment_ultrasound': 'Ултразвук',
+        'equipment_incubator': 'Инкубатор',
+        'equipment_oxygen': 'Кислородна машина',
+        
+        # Additional translations
         'register_btn': 'Регистрирай клиника',
         'clinic_registered': 'Клиниката \'{name}\' е регистрирана успешно!',
         'added_items': 'Добавени {services} услуги, {equipment} единици оборудване и {tests} лабораторни изследвания.',
@@ -268,6 +308,47 @@ def t(key, lang=None, **kwargs):
     if kwargs:
         return text.format(**kwargs)
     return text
+
+def translate_service_name(english_name, lang):
+    """Translate service name from English to selected language"""
+    # Create a mapping of English names to translation keys
+    service_map = {
+        'Cat Hotel': 'service_cat_hotel',
+        'Dog Hotel': 'service_dog_hotel',
+        'Grooming': 'service_grooming',
+        'Deworming': 'service_deworming',
+        'Prophylaxis': 'service_prophylaxis',
+        'Dental Care': 'service_dental_care',
+        'Surgery': 'service_surgery',
+        'Vaccination': 'service_vaccination',
+        'Ophthalmology': 'service_ophthalmology',
+        'Microchipping': 'service_microchipping',
+        'Travel Documents': 'service_travel_documents',
+    }
+    
+    # Get translation key
+    key = service_map.get(english_name)
+    
+    # Return translated name if found, otherwise return original
+    if key:
+        return t(key, lang)
+    else:
+        return english_name  # Return original if not in map
+
+def translate_equipment_name(english_name, lang):
+    """Translate equipment name from English to selected language"""
+    equipment_map = {
+        'X-Ray': 'equipment_xray',
+        'Ultrasound': 'equipment_ultrasound',
+        'Incubator': 'equipment_incubator',
+        'Oxygen Machine': 'equipment_oxygen',
+    }
+    
+    key = equipment_map.get(english_name)
+    if key:
+        return t(key, lang)
+    else:
+        return english_name
 
 # Database connection
 DB_PATH = "vet_platform.db"
@@ -536,21 +617,21 @@ if page == t('search_clinics', lang):
     st.subheader("🔍 Search Filters")
     
     # Quick search shortcuts
-    with st.expander("⚡ Quick Searches (Click to auto-fill)", expanded=False):
-        st.markdown("**Common Searches:**")
+    with st.expander(f"⚡ {t('quick_searches', lang)}", expanded=False):
+        st.markdown(f"**{t('common_searches', lang)}**")
         col_q1, col_q2, col_q3, col_q4 = st.columns(4)
         
         with col_q1:
-            if st.button("🏨 Hotels", use_container_width=True):
+            if st.button(f"🏨 {t('hotels_btn', lang)}", use_container_width=True):
                 st.session_state.quick_search_services = ["Cat Hotel", "Dog Hotel"]
         with col_q2:
-            if st.button("💉 Vaccination", use_container_width=True):
+            if st.button(f"💉 {t('vaccination_btn', lang)}", use_container_width=True):
                 st.session_state.quick_search_services = ["Vaccination"]
         with col_q3:
-            if st.button("🔬 Diagnostics", use_container_width=True):
+            if st.button(f"🔬 {t('diagnostics_btn', lang)}", use_container_width=True):
                 st.session_state.quick_search_equipment = ["X-Ray", "Ultrasound"]
         with col_q4:
-            if st.button("🚨 Emergency", use_container_width=True):
+            if st.button(f"🚨 {t('emergency_btn', lang)}", use_container_width=True):
                 st.session_state.quick_search_emergency = True
     
     # Initialize quick search session state
@@ -564,36 +645,72 @@ if page == t('search_clinics', lang):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown(f"**💉 Services** ({len(service_options)} available)")
+        st.markdown(f"**💉 {t('services', lang)}** ({len(service_options)} {t('available', lang)})")
         if len(service_options) > 0:
-            # Use quick search if available
-            default_services = [s for s in st.session_state.quick_search_services if s in service_options]
-            selected_services = st.multiselect(
-                "Select services (leave empty for all)",
-                options=service_options,
-                default=default_services,
-                help="Select one or more services you're looking for"
+            # Create translated options for display
+            service_options_translated = [translate_service_name(s, lang) for s in service_options]
+            
+            # Create mapping for reverse lookup (translated name -> English name)
+            service_display_to_english = {
+                translate_service_name(s, lang): s 
+                for s in service_options
+            }
+            
+            # Use quick search if available (translate defaults)
+            default_services_english = [s for s in st.session_state.quick_search_services if s in service_options]
+            default_services_translated = [translate_service_name(s, lang) for s in default_services_english]
+            
+            selected_services_display = st.multiselect(
+                t('select_services', lang),
+                options=service_options_translated,
+                default=default_services_translated,
+                help=t('service_help', lang)
             )
+            
+            # Convert displayed names back to English for database query
+            selected_services = [
+                service_display_to_english[s] 
+                for s in selected_services_display
+            ]
+            
             # Clear quick search after use
-            if default_services:
+            if default_services_english:
                 st.session_state.quick_search_services = []
         else:
             st.warning("No services registered yet. Add clinics with services first.")
             selected_services = []
     
     with col2:
-        st.markdown(f"**🔬 Equipment** ({len(equipment_options)} available)")
+        st.markdown(f"**🔬 {t('equipment', lang)}** ({len(equipment_options)} {t('available', lang)})")
         if len(equipment_options) > 0:
-            # Use quick search if available
-            default_equipment = [e for e in st.session_state.quick_search_equipment if e in equipment_options]
-            selected_equipment = st.multiselect(
-                "Select equipment (leave empty for all)",
-                options=equipment_options,
-                default=default_equipment,
-                help="Select equipment the clinic should have"
+            # Create translated options for display
+            equipment_options_translated = [translate_equipment_name(e, lang) for e in equipment_options]
+            
+            # Create mapping for reverse lookup
+            equipment_display_to_english = {
+                translate_equipment_name(e, lang): e 
+                for e in equipment_options
+            }
+            
+            # Use quick search if available (translate defaults)
+            default_equipment_english = [e for e in st.session_state.quick_search_equipment if e in equipment_options]
+            default_equipment_translated = [translate_equipment_name(e, lang) for e in default_equipment_english]
+            
+            selected_equipment_display = st.multiselect(
+                t('select_equipment', lang),
+                options=equipment_options_translated,
+                default=default_equipment_translated,
+                help=t('equipment_help', lang)
             )
+            
+            # Convert displayed names back to English for database query
+            selected_equipment = [
+                equipment_display_to_english[e] 
+                for e in selected_equipment_display
+            ]
+            
             # Clear quick search after use
-            if default_equipment:
+            if default_equipment_english:
                 st.session_state.quick_search_equipment = []
         else:
             st.warning("No equipment registered yet. Add clinics with equipment first.")
@@ -775,22 +892,24 @@ if page == t('search_clinics', lang):
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        st.markdown("#### 💉 Services")
+                        st.markdown(f"#### 💉 {t('services', lang)}")
                         if clinic['services']:
                             services_list = clinic['services'].split(',')
                             for svc in services_list[:5]:  # Show first 5
-                                st.write(f"• {svc}")
+                                translated_svc = translate_service_name(svc.strip(), lang)
+                                st.write(f"• {translated_svc}")
                             if len(services_list) > 5:
-                                st.write(f"*...and {len(services_list) - 5} more*")
+                                st.write(f"*{t('and_more', lang, count=len(services_list) - 5)}*")
                         else:
-                            st.write("*Not specified*")
+                            st.write(f"*{t('not_specified', lang)}*")
                     
                     with col2:
-                        st.markdown("#### 🔬 Equipment")
+                        st.markdown(f"#### 🔬 {t('equipment', lang)}")
                         if clinic['equipment']:
                             equip_list = clinic['equipment'].split(',')
                             for eq in equip_list:
-                                st.write(f"• {eq}")
+                                translated_eq = translate_equipment_name(eq.strip(), lang)
+                                st.write(f"• {translated_eq}")
                         else:
                             st.write("*Not specified*")
                     
@@ -844,7 +963,7 @@ elif page == "Add Clinic":
         st.markdown("---")
         
         # Services
-        st.subheader("💉 Services Offered")
+        st.subheader(f"💉 {t('services_offered_label', lang)}")
         
         service_options = [
             "Cat Hotel", "Dog Hotel", "Grooming", "Deworming", 
@@ -857,17 +976,21 @@ elif page == "Add Clinic":
         selected_services = []
         for idx, service in enumerate(service_options):
             with cols[idx % 3]:
-                if st.checkbox(service, key=f"service_{service}"):
-                    selected_services.append(service)
+                # Display translated name but store English name in database
+                translated_name = translate_service_name(service, lang)
+                if st.checkbox(translated_name, key=f"service_{service}"):
+                    selected_services.append(service)  # Store English name
         
         # Other services input
-        other_services = st.text_input("➕ Other Services (comma-separated)", 
-                                      placeholder="e.g., behavioral training, nutritional counseling")
+        other_services = st.text_input(
+            f"➕ {t('other_services', lang)}", 
+            placeholder=t('other_services_placeholder', lang)
+        )
         
         st.markdown("---")
         
         # Equipment
-        st.subheader("🔬 Equipment Available")
+        st.subheader(f"🔬 {t('equipment_available_label', lang)}")
         
         equipment_options = ["X-Ray", "Ultrasound", "Incubator", "Oxygen Machine"]
         
@@ -875,11 +998,15 @@ elif page == "Add Clinic":
         selected_equipment = []
         for idx, equip in enumerate(equipment_options):
             with cols[idx]:
-                if st.checkbox(equip, key=f"equip_{equip}"):
-                    selected_equipment.append(equip)
+                # Display translated name but store English name in database
+                translated_name = translate_equipment_name(equip, lang)
+                if st.checkbox(translated_name, key=f"equip_{equip}"):
+                    selected_equipment.append(equip)  # Store English name
         
-        other_equipment = st.text_input("➕ Other Equipment (comma-separated)", 
-                                       placeholder="e.g., ECG machine, anesthesia machine")
+        other_equipment = st.text_input(
+            f"➕ {t('other_equipment', lang)}", 
+            placeholder=t('other_equipment_placeholder', lang)
+        )
         
         st.markdown("---")
         
@@ -1126,20 +1253,22 @@ elif page == "View All Clinics":
                 st.write(clinic['care_types'])
             
             with col2:
-                st.markdown("**💉 Services Offered**")
+                st.markdown(f"**💉 {t('services_offered', lang)}**")
                 if clinic['services']:
                     for svc in clinic['services'].split(','):
-                        st.write(f"• {svc}")
+                        translated_svc = translate_service_name(svc.strip(), lang)
+                        st.write(f"• {translated_svc}")
                 else:
-                    st.write("*Not specified*")
+                    st.write(f"*{t('not_specified', lang)}*")
             
             col3, col4 = st.columns(2)
             
             with col3:
-                st.markdown("**🔬 Equipment Available**")
+                st.markdown(f"**🔬 {t('equipment_available', lang)}**")
                 if clinic['equipment']:
                     for eq in clinic['equipment'].split(','):
-                        st.write(f"• {eq}")
+                        translated_eq = translate_equipment_name(eq.strip(), lang)
+                        st.write(f"• {translated_eq}")
                 else:
                     st.write("*Not specified*")
             
