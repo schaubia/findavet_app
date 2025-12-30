@@ -208,6 +208,12 @@ page = st.sidebar.radio("Go to", ["Search Clinics", "Add Clinic", "Add Review", 
 if page == "Search Clinics":
     st.header("🔍 Search for Veterinary Clinics")
     
+    # Initialize session state for search results
+    if 'search_results' not in st.session_state:
+        st.session_state.search_results = None
+    if 'search_user_location' not in st.session_state:
+        st.session_state.search_user_location = None
+    
     # Location input section
     st.subheader("📍 Your Location (Optional)")
     st.markdown("*Enter your location to find the nearest clinics and see distances*")
@@ -245,7 +251,19 @@ if page == "Search Clinics":
     with col5:
         wild_animal_only = st.checkbox("🦊 Wild Animal Care")
     
-    if st.button("🔍 Search", use_container_width=True):
+    # Search and Clear buttons
+    col_btn1, col_btn2 = st.columns([3, 1])
+    with col_btn1:
+        search_clicked = st.button("🔍 Search", use_container_width=True, type="primary")
+    with col_btn2:
+        clear_clicked = st.button("🗑️ Clear", use_container_width=True)
+    
+    if clear_clicked:
+        st.session_state.search_results = None
+        st.session_state.search_user_location = None
+        st.rerun()
+    
+    if search_clicked:
         conn = get_db_connection()
         query = """
             SELECT DISTINCT c.*, 
@@ -295,12 +313,20 @@ if page == "Search Clinics":
             # Sort by rating if not using location
             results = results.sort_values('rating', ascending=False)
         
+        # Store results in session state
+        st.session_state.search_results = results
+        st.session_state.search_user_location = (user_lat, user_lon) if use_location else None
+    
+    # Display results from session state
+    if st.session_state.search_results is not None:
+        results = st.session_state.search_results
+        user_location = st.session_state.search_user_location
+        
         if len(results) > 0:
             st.success(f"Found {len(results)} clinic(s)")
             
             # Display map
             st.subheader("🗺️ Clinic Locations")
-            user_location = (user_lat, user_lon) if use_location else None
             clinic_map = create_clinic_map(results, user_location=user_location)
             st_folium(clinic_map, width=None, height=500)
             
@@ -377,6 +403,10 @@ if page == "Search Clinics":
                             st.write("*Not specified*")
         else:
             st.warning("No clinics found matching your criteria")
+            st.info("Try adjusting your search filters or expanding the search radius.")
+    else:
+        st.info("👆 Use the search filters above and click 'Search' to find veterinary clinics")
+
 
 # Add Clinic Page
 elif page == "Add Clinic":
