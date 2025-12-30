@@ -20,51 +20,62 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    """Initialize database if it doesn't exist"""
-    if not os.path.exists(DB_PATH):
+def get_table_columns(table_name):
+    """Get column names for a table"""
+    try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Create tables (basic structure)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS clinics (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                address TEXT,
-                phone TEXT,
-                email TEXT,
-                latitude REAL,
-                longitude REAL,
-                rating REAL DEFAULT 0,
-                emergency_available BOOLEAN DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS services (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                clinic_id INTEGER,
-                service_name TEXT NOT NULL,
-                price REAL,
-                FOREIGN KEY (clinic_id) REFERENCES clinics (id)
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS reviews (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                clinic_id INTEGER,
-                rating INTEGER,
-                comment TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (clinic_id) REFERENCES clinics (id)
-            )
-        """)
-        
-        conn.commit()
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        columns = [row[1] for row in cursor.fetchall()]
         conn.close()
+        return columns
+    except:
+        return []
+
+def init_db():
+    """Initialize database - create tables if they don't exist"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Create tables (basic structure)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS clinics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            address TEXT,
+            phone TEXT,
+            email TEXT,
+            latitude REAL,
+            longitude REAL,
+            rating REAL DEFAULT 0,
+            emergency_available INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS services (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clinic_id INTEGER,
+            service_name TEXT NOT NULL,
+            price REAL,
+            FOREIGN KEY (clinic_id) REFERENCES clinics (id)
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clinic_id INTEGER,
+            rating INTEGER,
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (clinic_id) REFERENCES clinics (id)
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
 
 # Initialize database
 init_db()
@@ -160,30 +171,68 @@ elif page == "Add Clinic":
         
         if submitted:
             if name and address:
-                conn = get_db_connection()
-                cursor = conn.cursor()
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    
+                    # Convert boolean to integer for SQLite
+                    emergency_int = 1 if emergency else 0
+                    
+                    # Get available columns
+                    columns = get_table_columns('clinics')
+                    
+                    # Build insert query based on available columns
+                    insert_cols = ['name', 'address']
+                    insert_vals = [name, address]
+                    
+                    if phone and 'phone' in columns:
+                        insert_cols.append('phone')
+                        insert_vals.append(phone)
+                    
+                    if email and 'email' in columns:
+                        insert_cols.append('email')
+                        insert_vals.append(email)
+                    
+                    if 'latitude' in columns:
+                        insert_cols.append('latitude')
+                        insert_vals.append(latitude)
+                    
+                    if 'longitude' in columns:
+                        insert_cols.append('longitude')
+                        insert_vals.append(longitude)
+                    
+                    if 'emergency_available' in columns:
+                        insert_cols.append('emergency_available')
+                        insert_vals.append(emergency_int)
+                    
+                    # Insert clinic
+                    placeholders = ', '.join(['?'] * len(insert_vals))
+                    cols_str = ', '.join(insert_cols)
+                    
+                    cursor.execute(f"""
+                        INSERT INTO clinics ({cols_str})
+                        VALUES ({placeholders})
+                    """, tuple(insert_vals))
+                    
+                    clinic_id = cursor.lastrowid
                 
-                # Insert clinic
-                cursor.execute("""
-                    INSERT INTO clinics (name, address, phone, email, latitude, longitude, emergency_available)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (name, address, phone, email, latitude, longitude, emergency))
-                
-                clinic_id = cursor.lastrowid
-                
-                # Insert services
-                if services:
-                    service_list = [s.strip() for s in services.split('\n') if s.strip()]
-                    for service in service_list:
-                        cursor.execute("""
-                            INSERT INTO services (clinic_id, service_name)
-                            VALUES (?, ?)
-                        """, (clinic_id, service))
-                
-                conn.commit()
-                conn.close()
-                
-                st.success(f"✅ Clinic '{name}' registered successfully!")
+                    # Insert services
+                    if services:
+                        service_list = [s.strip() for s in services.split('\n') if s.strip()]
+                        for service in service_list:
+                            cursor.execute("""
+                                INSERT INTO services (clinic_id, service_name)
+                                VALUES (?, ?)
+                            """, (clinic_id, service))
+                    
+                    conn.commit()
+                    conn.close()
+                    
+                    st.success(f"✅ Clinic '{name}' registered successfully!")
+                    
+                except Exception as e:
+                    st.error(f"Error registering clinic: {str(e)}")
+                    st.info("Please check if the database has the correct structure. Try deleting vet_platform.db and restart the app.")
             else:
                 st.error("Please fill in all required fields (marked with *)")
 
