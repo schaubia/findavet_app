@@ -233,23 +233,104 @@ if page == "Search Clinics":
     
     st.markdown("---")
     
+    # Get available services and equipment from database for autocomplete
+    conn = get_db_connection()
+    all_services = pd.read_sql_query("""
+        SELECT DISTINCT service_name 
+        FROM services 
+        WHERE service_name IS NOT NULL 
+        ORDER BY service_name
+    """, conn)
+    all_equipment = pd.read_sql_query("""
+        SELECT DISTINCT equipment_name 
+        FROM equipment 
+        WHERE equipment_name IS NOT NULL 
+        ORDER BY equipment_name
+    """, conn)
+    conn.close()
+    
+    service_options = all_services['service_name'].tolist()
+    equipment_options = all_equipment['equipment_name'].tolist()
+    
     # Search filters
-    col1, col2, col3 = st.columns(3)
+    st.subheader("🔍 Search Filters")
+    
+    # Quick search shortcuts
+    with st.expander("⚡ Quick Searches (Click to auto-fill)", expanded=False):
+        st.markdown("**Common Searches:**")
+        col_q1, col_q2, col_q3, col_q4 = st.columns(4)
+        
+        with col_q1:
+            if st.button("🏨 Hotels", use_container_width=True):
+                st.session_state.quick_search_services = ["Cat Hotel", "Dog Hotel"]
+        with col_q2:
+            if st.button("💉 Vaccination", use_container_width=True):
+                st.session_state.quick_search_services = ["Vaccination"]
+        with col_q3:
+            if st.button("🔬 Diagnostics", use_container_width=True):
+                st.session_state.quick_search_equipment = ["X-Ray", "Ultrasound"]
+        with col_q4:
+            if st.button("🚨 Emergency", use_container_width=True):
+                st.session_state.quick_search_emergency = True
+    
+    # Initialize quick search session state
+    if 'quick_search_services' not in st.session_state:
+        st.session_state.quick_search_services = []
+    if 'quick_search_equipment' not in st.session_state:
+        st.session_state.quick_search_equipment = []
+    if 'quick_search_emergency' not in st.session_state:
+        st.session_state.quick_search_emergency = False
+    
+    col1, col2 = st.columns(2)
     
     with col1:
-        search_service = st.text_input("Search by service (e.g., vaccination, surgery)")
+        st.markdown(f"**💉 Services** ({len(service_options)} available)")
+        if len(service_options) > 0:
+            # Use quick search if available
+            default_services = [s for s in st.session_state.quick_search_services if s in service_options]
+            selected_services = st.multiselect(
+                "Select services (leave empty for all)",
+                options=service_options,
+                default=default_services,
+                help="Select one or more services you're looking for"
+            )
+            # Clear quick search after use
+            if default_services:
+                st.session_state.quick_search_services = []
+        else:
+            st.warning("No services registered yet. Add clinics with services first.")
+            selected_services = []
     
     with col2:
-        emergency_only = st.checkbox("🚨 Emergency Care")
+        st.markdown(f"**🔬 Equipment** ({len(equipment_options)} available)")
+        if len(equipment_options) > 0:
+            # Use quick search if available
+            default_equipment = [e for e in st.session_state.quick_search_equipment if e in equipment_options]
+            selected_equipment = st.multiselect(
+                "Select equipment (leave empty for all)",
+                options=equipment_options,
+                default=default_equipment,
+                help="Select equipment the clinic should have"
+            )
+            # Clear quick search after use
+            if default_equipment:
+                st.session_state.quick_search_equipment = []
+        else:
+            st.warning("No equipment registered yet. Add clinics with equipment first.")
+            selected_equipment = []
+    
+    col3, col4 = st.columns(2)
     
     with col3:
-        min_rating = st.slider("Minimum rating", 0.0, 5.0, 0.0, 0.5)
-    
-    col4, col5 = st.columns(2)
-    with col4:
+        emergency_default = st.session_state.quick_search_emergency
+        emergency_only = st.checkbox("🚨 Emergency Care", value=emergency_default)
+        if emergency_default:
+            st.session_state.quick_search_emergency = False  # Reset after use
         inpatient_only = st.checkbox("🏨 Inpatient Care")
-    with col5:
+    
+    with col4:
         wild_animal_only = st.checkbox("🦊 Wild Animal Care")
+        min_rating = st.slider("Minimum rating", 0.0, 5.0, 0.0, 0.5)
     
     # Search and Clear buttons
     col_btn1, col_btn2 = st.columns([3, 1])
@@ -265,6 +346,8 @@ if page == "Search Clinics":
     
     if search_clicked:
         conn = get_db_connection()
+        
+        # Build query with subqueries for service and equipment filtering
         query = """
             SELECT DISTINCT c.*, 
                    GROUP_CONCAT(DISTINCT s.service_name) as services,
@@ -278,9 +361,29 @@ if page == "Search Clinics":
         """
         params = []
         
-        if search_service:
-            query += " AND s.service_name LIKE ?"
-            params.append(f"%{search_service}%")
+        # Filter by selected services (clinic must have ALL selected services)
+        if selected_services:
+            service_conditions = []
+            for service in selected_services:
+                service_conditions.append("""
+                    c.id IN (
+                        SELECT clinic_id FROM services WHERE service_name = ?
+                    )
+                """)
+                params.append(service)
+            query += " AND " + " AND ".join(service_conditions)
+        
+        # Filter by selected equipment (clinic must have ALL selected equipment)
+        if selected_equipment:
+            equipment_conditions = []
+            for equip in selected_equipment:
+                equipment_conditions.append("""
+                    c.id IN (
+                        SELECT clinic_id FROM equipment WHERE equipment_name = ?
+                    )
+                """)
+                params.append(equip)
+            query += " AND " + " AND ".join(equipment_conditions)
         
         if emergency_only:
             query += " AND c.emergency_available = 1"
@@ -324,6 +427,26 @@ if page == "Search Clinics":
         
         if len(results) > 0:
             st.success(f"Found {len(results)} clinic(s)")
+            
+            # Show active filters
+            active_filters = []
+            if selected_services:
+                active_filters.append(f"**Services:** {', '.join(selected_services)}")
+            if selected_equipment:
+                active_filters.append(f"**Equipment:** {', '.join(selected_equipment)}")
+            if emergency_only:
+                active_filters.append("**🚨 Emergency Care**")
+            if inpatient_only:
+                active_filters.append("**🏨 Inpatient Care**")
+            if wild_animal_only:
+                active_filters.append("**🦊 Wild Animal Care**")
+            if min_rating > 0:
+                active_filters.append(f"**Rating:** ≥ {min_rating:.1f}")
+            if user_location:
+                active_filters.append(f"**Max Distance:** {max_distance} km")
+            
+            if active_filters:
+                st.info("**Active Filters:** " + " | ".join(active_filters))
             
             # Display map
             st.subheader("🗺️ Clinic Locations")
