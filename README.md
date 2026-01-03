@@ -27,8 +27,7 @@ A comprehensive veterinary clinic management and recommendation system built wit
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/sofia-vet-platform.git
-cd sofia-vet-platform
+git clone https://github.com/schaubia/findavet_app.git
 
 # Create virtual environment
 python -m venv venv
