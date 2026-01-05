@@ -565,24 +565,29 @@ elif page == t('search_clinics', lang):
     st.caption(t('common_searches', lang))
     col1, col2, col3, col4 = st.columns(4)
     
-    if 'selected_services' not in st.session_state:
-        st.session_state.selected_services = []
+    # Initialize session state for quick searches
+    if 'quick_search_services' not in st.session_state:
+        st.session_state.quick_search_services = []
+    if 'quick_search_equipment' not in st.session_state:
+        st.session_state.quick_search_equipment = []
+    if 'quick_search_emergency' not in st.session_state:
+        st.session_state.quick_search_emergency = False
     
     with col1:
-        if st.button("🏨 " + t('hotels_btn', lang)):
-            st.session_state.selected_services = ['Cat Hotel', 'Dog Hotel']
+        if st.button("🏨 " + t('hotels_btn', lang), use_container_width=True):
+            st.session_state.quick_search_services = ['Cat Hotel', 'Dog Hotel']
             st.rerun()
     with col2:
-        if st.button("💉 " + t('vaccination_btn', lang)):
-            st.session_state.selected_services = ['Vaccination']
+        if st.button("💉 " + t('vaccination_btn', lang), use_container_width=True):
+            st.session_state.quick_search_services = ['Vaccination']
             st.rerun()
     with col3:
-        if st.button("🔬 " + t('diagnostics_btn', lang)):
-            st.session_state.selected_equipment = ['X-Ray', 'Ultrasound']
+        if st.button("🔬 " + t('diagnostics_btn', lang), use_container_width=True):
+            st.session_state.quick_search_equipment = ['X-Ray', 'Ultrasound']
             st.rerun()
     with col4:
-        if st.button("🚨 " + t('emergency_btn', lang)):
-            st.session_state.emergency_only = True
+        if st.button("🚨 " + t('emergency_btn', lang), use_container_width=True):
+            st.session_state.quick_search_emergency = True
             st.rerun()
     
     col1, col2 = st.columns(2)
@@ -592,18 +597,42 @@ elif page == t('search_clinics', lang):
         
         # Get available services
         conn = get_db_connection()
-        services = pd.read_sql_query("SELECT DISTINCT service_name FROM services ORDER BY service_name", conn)
+        services_df = pd.read_sql_query("SELECT DISTINCT service_name FROM services ORDER BY service_name", conn)
         conn.close()
         
-        if len(services) > 0:
-            service_list = services['service_name'].tolist()
-            selected_services = st.multiselect(
+        if len(services_df) > 0:
+            service_list = services_df['service_name'].tolist()
+            
+            # Create translated options for display
+            service_options_translated = [translate_service_name(s, lang) for s in service_list]
+            
+            # Create mapping for reverse lookup
+            service_display_to_english = {
+                translate_service_name(s, lang): s 
+                for s in service_list
+            }
+            
+            # Use quick search if available
+            default_services_english = [s for s in st.session_state.quick_search_services if s in service_list]
+            default_services_translated = [translate_service_name(s, lang) for s in default_services_english]
+            
+            selected_services_display = st.multiselect(
                 t('select_services', lang),
-                options=service_list,
-                default=st.session_state.get('selected_services', []),
+                options=service_options_translated,
+                default=default_services_translated,
                 help=t('service_help', lang),
                 key='services_multi'
             )
+            
+            # Convert displayed names back to English
+            selected_services = [
+                service_display_to_english[s] 
+                for s in selected_services_display
+            ]
+            
+            # Clear quick search after use
+            if default_services_english:
+                st.session_state.quick_search_services = []
         else:
             selected_services = []
             st.info(t('no_clinics_yet', lang))
@@ -613,18 +642,42 @@ elif page == t('search_clinics', lang):
         
         # Get available equipment
         conn = get_db_connection()
-        equipment = pd.read_sql_query("SELECT DISTINCT equipment_name FROM equipment ORDER BY equipment_name", conn)
+        equipment_df = pd.read_sql_query("SELECT DISTINCT equipment_name FROM equipment ORDER BY equipment_name", conn)
         conn.close()
         
-        if len(equipment) > 0:
-            equipment_list = equipment['equipment_name'].tolist()
-            selected_equipment = st.multiselect(
+        if len(equipment_df) > 0:
+            equipment_list = equipment_df['equipment_name'].tolist()
+            
+            # Create translated options for display
+            equipment_options_translated = [translate_equipment_name(e, lang) for e in equipment_list]
+            
+            # Create mapping for reverse lookup
+            equipment_display_to_english = {
+                translate_equipment_name(e, lang): e 
+                for e in equipment_list
+            }
+            
+            # Use quick search if available
+            default_equipment_english = [e for e in st.session_state.quick_search_equipment if e in equipment_list]
+            default_equipment_translated = [translate_equipment_name(e, lang) for e in default_equipment_english]
+            
+            selected_equipment_display = st.multiselect(
                 t('select_equipment', lang),
-                options=equipment_list,
-                default=st.session_state.get('selected_equipment', []),
+                options=equipment_options_translated,
+                default=default_equipment_translated,
                 help=t('equipment_help', lang),
                 key='equipment_multi'
             )
+            
+            # Convert displayed names back to English
+            selected_equipment = [
+                equipment_display_to_english[e] 
+                for e in selected_equipment_display
+            ]
+            
+            # Clear quick search after use
+            if default_equipment_english:
+                st.session_state.quick_search_equipment = []
         else:
             selected_equipment = []
     
@@ -632,7 +685,10 @@ elif page == t('search_clinics', lang):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        emergency_only = st.checkbox(t('emergency_care', lang), value=st.session_state.get('emergency_only', False))
+        emergency_default = st.session_state.quick_search_emergency
+        emergency_only = st.checkbox(t('emergency_care', lang), value=emergency_default)
+        if emergency_default:
+            st.session_state.quick_search_emergency = False
     with col2:
         inpatient_only = st.checkbox(t('inpatient_care', lang))
     with col3:
@@ -645,9 +701,9 @@ elif page == t('search_clinics', lang):
         search_clicked = st.button(t('search_btn', lang), type="primary", use_container_width=True)
     with col2:
         if st.button(t('clear_btn', lang), use_container_width=True):
-            st.session_state.selected_services = []
-            st.session_state.selected_equipment = []
-            st.session_state.emergency_only = False
+            st.session_state.quick_search_services = []
+            st.session_state.quick_search_equipment = []
+            st.session_state.quick_search_emergency = False
             st.rerun()
     
     if search_clicked:
@@ -796,23 +852,29 @@ elif page == t('search_clinics', lang):
     else:
         st.info(t('use_search_filters', lang))
 
-# Add Clinic Page (keeping your original logic)
+# Add Clinic Page
 elif page == t('add_clinic', lang):
     st.header(f"➕ {t('register_clinic', lang)}")
     
     with st.form("add_clinic_form"):
         st.subheader(t('basic_info', lang))
         
+        name = st.text_input(t('clinic_name', lang), placeholder=t('clinic_name_placeholder', lang))
+        address = st.text_input(t('address', lang), placeholder=t('address_placeholder', lang))
+        
         col1, col2 = st.columns(2)
         with col1:
-            name = st.text_input(t('clinic_name', lang), placeholder=t('clinic_name_placeholder', lang))
             phone = st.text_input(t('phone', lang), placeholder=t('phone_placeholder', lang))
-            latitude = st.number_input(t('latitude', lang), value=42.6977, format="%.6f")
-        
         with col2:
-            address = st.text_area(t('address', lang), placeholder=t('address_placeholder', lang))
             email = st.text_input(t('email', lang), placeholder=t('email_placeholder', lang))
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            latitude = st.number_input(t('latitude', lang), value=42.6977, format="%.6f")
+        with col2:
             longitude = st.number_input(t('longitude', lang), value=23.3219, format="%.6f")
+        
+        st.markdown("---")
         
         st.markdown(f"### {t('care_types', lang)}")
         col1, col2, col3 = st.columns(3)
@@ -823,27 +885,58 @@ elif page == t('add_clinic', lang):
         with col3:
             wild_animal = st.checkbox(t('wild_animal_care', lang))
         
+        st.markdown("---")
+        
         st.markdown(f"### {t('services_offered_label', lang)}")
-        services = st.multiselect(
-            t('select_services', lang),
-            options=['Cat Hotel', 'Dog Hotel', 'Grooming', 'Deworming', 'Prophylaxis', 
-                    'Dental Care', 'Surgery', 'Vaccination', 'Ophthalmology', 
-                    'Microchipping', 'Travel Documents']
+        
+        service_options = [
+            "Cat Hotel", "Dog Hotel", "Grooming", "Deworming", 
+            "Prophylaxis", "Dental Care", "Surgery", "Vaccination",
+            "Ophthalmology", "Microchipping", "Travel Documents"
+        ]
+        
+        # Create a grid of checkboxes for services
+        cols = st.columns(3)
+        selected_services = []
+        for idx, service in enumerate(service_options):
+            with cols[idx % 3]:
+                # Display translated name but store English name in database
+                translated_name = translate_service_name(service, lang)
+                if st.checkbox(translated_name, key=f"service_{service}"):
+                    selected_services.append(service)  # Store English name
+        
+        other_services = st.text_input(
+            f"➕ {t('other_services', lang)}", 
+            placeholder=t('other_services_placeholder', lang)
         )
-        other_services = st.text_input(t('other_services', lang), placeholder=t('other_services_placeholder', lang))
+        
+        st.markdown("---")
         
         st.markdown(f"### {t('equipment_available_label', lang)}")
-        equipment = st.multiselect(
-            t('select_equipment', lang),
-            options=['X-Ray', 'Ultrasound', 'Incubator', 'Oxygen Machine']
+        
+        equipment_options = ["X-Ray", "Ultrasound", "Incubator", "Oxygen Machine"]
+        
+        cols = st.columns(4)
+        selected_equipment = []
+        for idx, equip in enumerate(equipment_options):
+            with cols[idx]:
+                # Display translated name but store English name in database
+                translated_name = translate_equipment_name(equip, lang)
+                if st.checkbox(translated_name, key=f"equip_{equip}"):
+                    selected_equipment.append(equip)  # Store English name
+        
+        other_equipment = st.text_input(
+            f"➕ {t('other_equipment', lang)}", 
+            placeholder=t('other_equipment_placeholder', lang)
         )
-        other_equipment = st.text_input(t('other_equipment', lang), placeholder=t('other_equipment_placeholder', lang))
+        
+        st.markdown("---")
         
         st.markdown(f"### {t('lab_tests_label', lang)}")
         lab_tests = st.text_area(
             t('lab_tests_label', lang),
             placeholder=t('lab_tests_placeholder', lang),
-            height=100
+            height=150
         )
         
         submitted = st.form_submit_button(t('register_btn', lang), type="primary", use_container_width=True)
@@ -867,7 +960,7 @@ elif page == t('add_clinic', lang):
                     clinic_id = cursor.lastrowid
                     
                     # Add services
-                    all_services = services.copy()
+                    all_services = selected_services.copy()
                     if other_services:
                         all_services.extend([s.strip() for s in other_services.split(',')])
                     
@@ -877,7 +970,7 @@ elif page == t('add_clinic', lang):
                                          (clinic_id, service))
                     
                     # Add equipment
-                    all_equipment = equipment.copy()
+                    all_equipment = selected_equipment.copy()
                     if other_equipment:
                         all_equipment.extend([e.strip() for e in other_equipment.split(',')])
                     
@@ -887,6 +980,7 @@ elif page == t('add_clinic', lang):
                                          (clinic_id, equip))
                     
                     # Add lab tests
+                    test_list = []
                     if lab_tests:
                         test_list = [t.strip() for t in lab_tests.split('\n') if t.strip()]
                         for test in test_list:
@@ -898,7 +992,7 @@ elif page == t('add_clinic', lang):
                     
                     st.success(t('clinic_registered', lang, name=name))
                     st.info(t('added_items', lang, services=len(all_services), 
-                            equipment=len(all_equipment), tests=len(test_list) if lab_tests else 0))
+                            equipment=len(all_equipment), tests=len(test_list)))
                     
                 except Exception as e:
                     st.error(t('registration_error', lang, error=str(e)))
