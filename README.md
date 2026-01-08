@@ -1,6 +1,6 @@
 # Sofia Vet Platform 🐱
 
-A comprehensive veterinary clinic management and recommendation system built with FastAPI, SQLAlchemy, and machine learning.
+A comprehensive veterinary clinic management and recommendation system.
 
 ## Features
 
@@ -10,7 +10,6 @@ A comprehensive veterinary clinic management and recommendation system built wit
   - Distance and location
   - Service matching
   - Ratings and reviews
-  - Price preferences
   - Emergency availability
 - ⭐ **Reviews & Ratings**: User reviews and ratings system
 - 📅 **Working Hours**: Manage clinic schedules

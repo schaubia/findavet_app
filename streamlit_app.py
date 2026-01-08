@@ -130,6 +130,11 @@ TRANSLATIONS = {
         'add_review_header': 'Add a Review',
         'select_clinic': 'Select Clinic',
         'rating': 'Rating',
+        'price_rating': 'Price Rating',
+        'price_rating_help': 'How expensive is this clinic?',
+        'price_cheap': '$ - Affordable',
+        'price_moderate': '$$ - Moderate',
+        'price_expensive': '$$$ - Expensive',
         'your_review': 'Your review',
         'review_placeholder': 'Share your experience...',
         'submit_review': 'Submit Review',
@@ -280,6 +285,11 @@ TRANSLATIONS = {
         'add_review_header': 'Добави отзив',
         'select_clinic': 'Изберете клиника',
         'rating': 'Оценка',
+        'price_rating': 'Ценова категория',
+        'price_rating_help': 'Колко скъпа е тази клиника?',
+        'price_cheap': '$ - Достъпна',
+        'price_moderate': '$$ - Средна',
+        'price_expensive': '$$$ - Скъпа',
         'your_review': 'Вашият отзив',
         'review_placeholder': 'Споделете вашия опит...',
         'submit_review': 'Изпрати отзив',
@@ -367,6 +377,17 @@ def translate_equipment_name(english_name, lang):
         return t(key, lang)
     else:
         return english_name
+
+def get_price_rating_display(price_rating):
+    """Convert numeric price rating to $ symbols"""
+    if price_rating == 1:
+        return "$"
+    elif price_rating == 2:
+        return "$$"
+    elif price_rating == 3:
+        return "$$$"
+    else:
+        return "N/A"
 
 # Database connection
 DB_PATH = "vet_platform.db"
@@ -528,6 +549,7 @@ def init_db():
             clinic_id INTEGER,
             rating INTEGER,
             comment TEXT,
+            price_rating INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (clinic_id) REFERENCES clinics (id)
         )
@@ -541,6 +563,12 @@ def init_db():
     
     try:
         cursor.execute("ALTER TABLE clinics ADD COLUMN wild_animal_care INTEGER DEFAULT 0")
+    except:
+        pass
+    
+    # Add price_rating column to existing reviews table if it doesn't exist
+    try:
+        cursor.execute("ALTER TABLE reviews ADD COLUMN price_rating INTEGER")
     except:
         pass
     
@@ -834,10 +862,12 @@ if page == t('search_clinics', lang):
         # Build query with subqueries for service and equipment filtering
         query = """
             SELECT DISTINCT c.*, 
+                   AVG(r.price_rating) as avg_price_rating,
                    GROUP_CONCAT(DISTINCT s.service_name) as services,
                    GROUP_CONCAT(DISTINCT e.equipment_name) as equipment,
                    GROUP_CONCAT(DISTINCT l.test_name) as lab_tests
             FROM clinics c
+            LEFT JOIN reviews r ON c.id = r.clinic_id
             LEFT JOIN services s ON c.id = s.clinic_id
             LEFT JOIN equipment e ON c.id = e.clinic_id
             LEFT JOIN lab_tests l ON c.id = l.clinic_id
@@ -954,6 +984,8 @@ if page == t('search_clinics', lang):
                 
                 # Add distance to title if available
                 title = f"#{idx} ⭐ {clinic['name']} - Rating: {clinic['rating']:.1f}"
+                if pd.notna(clinic.get('avg_price_rating')):
+                    title += f" | 💰 {get_price_rating_display(round(clinic['avg_price_rating']))}"
                 if 'distance' in clinic and pd.notna(clinic['distance']):
                     title += f" | 📍 {clinic['distance']:.2f} km away"
                 title += f" | {badge_str}"
@@ -966,6 +998,8 @@ if page == t('search_clinics', lang):
                     with col1:
                         st.write(f"**Address:** {clinic['address']}")
                         st.write(f"**Phone:** {clinic['phone']}")
+                        if pd.notna(clinic.get('avg_price_rating')):
+                            st.write(f"**💰 Price:** {get_price_rating_display(round(clinic['avg_price_rating']))}")
                     
                     with col2:
                         st.write(f"**Email:** {clinic['email']}")
@@ -1206,8 +1240,8 @@ elif page == "Add Clinic":
                 st.error("Please fill in all required fields (marked with *)")
 
 # Add Review Page
-elif page == "Add Review":
-    st.header("⭐ Add a Review")
+elif page == t('add_review', lang):
+    st.header(f"⭐ {t('add_review_header', lang)}")
     
     conn = get_db_connection()
     clinics = pd.read_sql_query("SELECT id, name FROM clinics ORDER BY name", conn)
@@ -1216,12 +1250,29 @@ elif page == "Add Review":
     if len(clinics) > 0:
         with st.form("add_review_form"):
             clinic_options = {row['name']: row['id'] for _, row in clinics.iterrows()}
-            selected_clinic = st.selectbox("Select Clinic", options=list(clinic_options.keys()))
+            selected_clinic = st.selectbox(t('select_clinic', lang), options=list(clinic_options.keys()))
             
-            rating = st.slider("Rating", 1, 5, 5)
-            comment = st.text_area("Your review", placeholder="Share your experience...")
+            col1, col2 = st.columns(2)
             
-            submitted = st.form_submit_button("Submit Review")
+            with col1:
+                rating = st.slider(t('rating', lang), 1, 5, 5)
+            
+            with col2:
+                price_options = {
+                    t('price_cheap', lang): 1,
+                    t('price_moderate', lang): 2,
+                    t('price_expensive', lang): 3
+                }
+                selected_price = st.selectbox(
+                    t('price_rating', lang),
+                    options=list(price_options.keys()),
+                    help=t('price_rating_help', lang)
+                )
+                price_rating = price_options[selected_price]
+            
+            comment = st.text_area(t('your_review', lang), placeholder=t('review_placeholder', lang))
+            
+            submitted = st.form_submit_button(t('submit_review', lang))
             
             if submitted:
                 clinic_id = clinic_options[selected_clinic]
@@ -1229,11 +1280,11 @@ elif page == "Add Review":
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 
-                # Insert review
+                # Insert review with price rating
                 cursor.execute("""
-                    INSERT INTO reviews (clinic_id, rating, comment)
-                    VALUES (?, ?, ?)
-                """, (clinic_id, rating, comment))
+                    INSERT INTO reviews (clinic_id, rating, comment, price_rating)
+                    VALUES (?, ?, ?, ?)
+                """, (clinic_id, rating, comment, price_rating))
                 
                 # Update clinic average rating
                 cursor.execute("""
@@ -1247,23 +1298,24 @@ elif page == "Add Review":
                 conn.commit()
                 conn.close()
                 
-                st.success("✅ Review submitted successfully!")
+                st.success(t('review_submitted', lang))
     else:
-        st.info("No clinics available yet. Please add a clinic first.")
+        st.info(t('no_clinics_yet', lang))
 
 # View All Clinics Page
-elif page == "View All Clinics":
-    st.header("📊 All Registered Clinics")
+elif page == t('view_all_clinics', lang):
+    st.header(f"📊 {t('all_clinics_header', lang)}")
     
     conn = get_db_connection()
     clinics = pd.read_sql_query("""
         SELECT c.*, 
                COUNT(DISTINCT r.id) as review_count,
+               AVG(r.price_rating) as avg_price_rating,
                GROUP_CONCAT(DISTINCT s.service_name) as services,
                GROUP_CONCAT(DISTINCT e.equipment_name) as equipment,
                GROUP_CONCAT(DISTINCT l.test_name) as lab_tests
         FROM clinics c
-        LEFT JOIN reviews r ON c.id = r.id
+        LEFT JOIN reviews r ON c.id = r.clinic_id
         LEFT JOIN services s ON c.id = s.clinic_id
         LEFT JOIN equipment e ON c.id = e.clinic_id
         LEFT JOIN lab_tests l ON c.id = l.clinic_id
@@ -1273,8 +1325,13 @@ elif page == "View All Clinics":
     conn.close()
     
     if len(clinics) > 0:
+        # Add price rating display
+        clinics['price_display'] = clinics['avg_price_rating'].apply(
+            lambda x: get_price_rating_display(round(x)) if pd.notna(x) else 'N/A'
+        )
+        
         # Display map first
-        st.subheader("🗺️ All Clinic Locations")
+        st.subheader(f"🗺️ {t('clinic_locations', lang)}")
         all_clinics_map = create_clinic_map(clinics, zoom_start=11)
         st_folium(all_clinics_map, width=None, height=500)
         
@@ -1286,32 +1343,33 @@ elif page == "View All Clinics":
                 '🚨 Emergency' if row.get('emergency_available', 0) else '',
                 '🏨 Inpatient' if row.get('inpatient_care', 0) else '',
                 '🦊 Wild Animal' if row.get('wild_animal_care', 0) else ''
-            ]).strip(', ') or 'Standard',
+            ]).strip(', ') or t('standard_care', lang),
             axis=1
         )
         
         # Display main table
-        st.subheader("📋 Clinics List")
-        display_cols = ['name', 'address', 'phone', 'rating', 'care_types']
+        st.subheader(f"📋 {t('clinics_list', lang)}")
+        display_cols = ['name', 'address', 'phone', 'rating', 'price_display', 'care_types']
         st.dataframe(
             clinics[display_cols], 
             use_container_width=True,
             hide_index=True,
             column_config={
-                "name": "Clinic Name",
-                "address": "Address",
-                "phone": "Phone",
-                "rating": st.column_config.NumberColumn("Rating", format="⭐ %.1f"),
-                "care_types": "Care Types Available"
+                "name": t('clinic_name_col', lang),
+                "address": t('address_col', lang),
+                "phone": t('phone_col', lang),
+                "rating": st.column_config.NumberColumn(t('rating_col', lang), format="⭐ %.1f"),
+                "price_display": "💰 Price",
+                "care_types": t('care_types_col', lang)
             }
         )
         
         # Detailed view option
         st.markdown("---")
-        st.subheader("🔍 Detailed Clinic Information")
+        st.subheader(f"🔍 {t('detailed_info', lang)}")
         
         selected_clinic_name = st.selectbox(
-            "Select a clinic to view details:",
+            t('select_clinic_details', lang),
             options=clinics['name'].tolist()
         )
         
@@ -1320,7 +1378,7 @@ elif page == "View All Clinics":
             
             # Show map for individual clinic
             if pd.notna(clinic['latitude']) and pd.notna(clinic['longitude']):
-                st.markdown("#### 📍 Clinic Location")
+                st.markdown(f"#### 📍 {t('clinic_location', lang)}")
                 clinic_df = pd.DataFrame([clinic])
                 single_clinic_map = create_clinic_map(clinic_df, zoom_start=15)
                 st_folium(single_clinic_map, width=None, height=300)
@@ -1329,12 +1387,14 @@ elif page == "View All Clinics":
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("**📍 Contact Information**")
-                st.write(f"Address: {clinic['address']}")
-                st.write(f"Phone: {clinic['phone']}")
-                st.write(f"Email: {clinic['email']}")
-                st.write(f"Rating: ⭐ {clinic['rating']:.1f}")
-                st.write(f"Coordinates: {clinic['latitude']:.6f}, {clinic['longitude']:.6f}")
+                st.markdown(f"**📍 {t('contact_info', lang)}**")
+                st.write(f"{t('address', lang)}: {clinic['address']}")
+                st.write(f"{t('phone', lang)}: {clinic['phone']}")
+                st.write(f"{t('email', lang)}: {clinic['email']}")
+                st.write(f"{t('rating', lang)}: ⭐ {clinic['rating']:.1f}")
+                if pd.notna(clinic['avg_price_rating']):
+                    st.write(f"💰 {t('price_rating', lang)}: {clinic['price_display']}")
+                st.write(f"{t('coordinates', lang)}: {clinic['latitude']:.6f}, {clinic['longitude']:.6f}")
                 
                 st.markdown("**🏥 Care Types**")
                 st.write(clinic['care_types'])
