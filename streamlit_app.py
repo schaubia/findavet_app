@@ -28,6 +28,28 @@ TRANSLATIONS = {
         'add_review': 'Add Review',
         'view_all_clinics': 'View All Clinics',
         
+        # AI Recommendations page
+        'ai_recommendations': 'AI Recommendations',
+        'ai_recommendations_header': 'AI-Powered Clinic Recommendations',
+        'ai_recommendations_subtitle': 'Get personalized clinic recommendations based on your needs',
+        'your_preferences': 'Your Preferences',
+        'match_score': 'Match Score',
+        'score_breakdown': 'Score Breakdown',
+        'distance_score': 'Distance Score',
+        'service_match': 'Service Match',
+        'rating_score': 'Rating Score',
+        'price_match': 'Price Match',
+        'emergency_score': 'Emergency Score',
+        'get_recommendations': 'Get Recommendations',
+        'top_recommendations': 'Top Recommendations for You',
+        'showing_results': 'Showing top {count} matches',
+        'no_recommendations': 'No clinics found matching your criteria. Try adjusting your preferences.',
+        'recommendation_for': 'Recommendation #{num}',
+        'overall_match': 'Overall Match',
+        'why_recommended': 'Why This Clinic?',
+        'max_price_pref': 'Maximum Price Preference',
+        'any_price': 'Any Price',
+        
         # Search page
         'search_header': 'Search for Veterinary Clinics',
         'your_location': 'Your Location (Optional)',
@@ -180,6 +202,28 @@ TRANSLATIONS = {
         'add_clinic': 'Добави клиника',
         'add_review': 'Добави отзив',
         'view_all_clinics': 'Всички клиники',
+        
+        # AI Recommendations page
+        'ai_recommendations': 'AI Препоръки',
+        'ai_recommendations_header': 'AI препоръки за клиники',
+        'ai_recommendations_subtitle': 'Получете персонализирани препоръки за клиники според вашите нужди',
+        'your_preferences': 'Вашите предпочитания',
+        'match_score': 'Съвпадение',
+        'score_breakdown': 'Разбивка на оценката',
+        'distance_score': 'Оценка за разстояние',
+        'service_match': 'Съвпадение на услуги',
+        'rating_score': 'Оценка на рейтинг',
+        'price_match': 'Ценово съвпадение',
+        'emergency_score': 'Оценка за спешност',
+        'get_recommendations': 'Вземи препоръки',
+        'top_recommendations': 'Топ препоръки за вас',
+        'showing_results': 'Показване на топ {count} резултата',
+        'no_recommendations': 'Не са намерени клиники, отговарящи на критериите. Опитайте да промените предпочитанията си.',
+        'recommendation_for': 'Препоръка #{num}',
+        'overall_match': 'Общо съвпадение',
+        'why_recommended': 'Защо тази клиника?',
+        'max_price_pref': 'Максимално ценово предпочитание',
+        'any_price': 'Всяка цена',
         
         # Search page
         'search_header': 'Търсене на ветеринарни клиники',
@@ -388,6 +432,188 @@ def get_price_rating_display(price_rating):
         return "$$$"
     else:
         return "N/A"
+
+# Recommendation Engine Class
+class VetRecommendationEngine:
+    """AI-powered recommendation system for veterinary clinics"""
+    
+    def __init__(self, conn):
+        self.conn = conn
+    
+    def calculate_distance(self, lat1, lon1, lat2, lon2):
+        """Calculate distance between two points in kilometers"""
+        try:
+            return geodesic((lat1, lon1), (lat2, lon2)).kilometers
+        except:
+            return float('inf')
+    
+    def get_service_match_score(self, clinic_id, required_services):
+        """Calculate how well clinic services match required services"""
+        if not required_services:
+            return 1.0
+        
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT service_name FROM services WHERE clinic_id = ?", (clinic_id,))
+        clinic_services = [row[0] for row in cursor.fetchall()]
+        
+        if not clinic_services:
+            return 0.0
+        
+        matches = 0
+        for req_service in required_services:
+            for clinic_service in clinic_services:
+                if req_service.lower() in clinic_service.lower():
+                    matches += 1
+                    break
+        
+        return matches / len(required_services) if required_services else 1.0
+    
+    def get_equipment_match_score(self, clinic_id, required_equipment):
+        """Calculate how well clinic equipment matches required equipment"""
+        if not required_equipment:
+            return 1.0
+        
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT equipment_name FROM equipment WHERE clinic_id = ?", (clinic_id,))
+        clinic_equipment = [row[0] for row in cursor.fetchall()]
+        
+        if not clinic_equipment:
+            return 0.0
+        
+        matches = 0
+        for req_equip in required_equipment:
+            for clinic_equip in clinic_equipment:
+                if req_equip.lower() in clinic_equip.lower():
+                    matches += 1
+                    break
+        
+        return matches / len(required_equipment) if required_equipment else 1.0
+    
+    def get_price_match_score(self, clinic_price_rating, max_preferred_price):
+        """Calculate price preference match"""
+        if not max_preferred_price or pd.isna(clinic_price_rating):
+            return 1.0
+        
+        if clinic_price_rating <= max_preferred_price:
+            return 1.0
+        else:
+            # Penalize if more expensive than preferred
+            diff = clinic_price_rating - max_preferred_price
+            return max(0.0, 1.0 - (diff * 0.3))
+    
+    def get_emergency_score(self, clinic_emergency, needs_emergency):
+        """Score for emergency service availability"""
+        if not needs_emergency:
+            return 1.0
+        return 1.0 if clinic_emergency else 0.0
+    
+    def calculate_clinic_score(self, clinic, user_location, required_services=None, 
+                              required_equipment=None, max_preferred_price=None,
+                              needs_emergency=False, max_distance_km=50):
+        """Calculate comprehensive recommendation score"""
+        
+        distance = self.calculate_distance(
+            user_location['lat'], user_location['lon'],
+            clinic['latitude'], clinic['longitude']
+        )
+        
+        if distance > max_distance_km:
+            return None
+        
+        # Distance score (closer is better)
+        distance_score = 1.0 - (distance / max_distance_km)
+        distance_score = max(0, distance_score)
+        
+        # Service match score
+        service_score = self.get_service_match_score(clinic['id'], required_services or [])
+        
+        # Equipment match score
+        equipment_score = self.get_equipment_match_score(clinic['id'], required_equipment or [])
+        
+        # Combine service and equipment into overall match
+        match_score = (service_score + equipment_score) / 2
+        
+        # Rating score
+        rating_score = clinic['rating'] / 5.0 if clinic['rating'] else 0.5
+        
+        # Get average price rating for clinic
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT AVG(price_rating) FROM reviews WHERE clinic_id = ?", (clinic['id'],))
+        result = cursor.fetchone()
+        avg_price_rating = result[0] if result[0] else None
+        
+        # Price match score
+        price_score = self.get_price_match_score(avg_price_rating, max_preferred_price)
+        
+        # Emergency score
+        emergency_score = self.get_emergency_score(clinic.get('emergency_available', 0), needs_emergency)
+        
+        # Calculate total score with weights
+        total_score = (
+            distance_score * 0.30 +
+            match_score * 0.30 +
+            rating_score * 0.20 +
+            price_score * 0.10 +
+            emergency_score * 0.10
+        )
+        
+        return {
+            'clinic': clinic,
+            'total_score': round(total_score * 100, 2),
+            'distance_km': round(distance, 2),
+            'distance_score': round(distance_score * 100, 2),
+            'service_match_score': round(service_score * 100, 2),
+            'equipment_match_score': round(equipment_score * 100, 2),
+            'overall_match_score': round(match_score * 100, 2),
+            'rating_score': round(rating_score * 100, 2),
+            'price_match_score': round(price_score * 100, 2),
+            'emergency_score': round(emergency_score * 100, 2),
+            'avg_price_rating': avg_price_rating
+        }
+    
+    def get_recommendations(self, user_location, required_services=None, 
+                           required_equipment=None, max_preferred_price=None,
+                           needs_emergency=False, needs_inpatient=False,
+                           needs_wild_animal=False, min_rating=0.0,
+                           max_distance_km=50, top_n=5):
+        """Get top N clinic recommendations"""
+        
+        query = "SELECT * FROM clinics WHERE 1=1"
+        params = []
+        
+        if needs_emergency:
+            query += " AND emergency_available = 1"
+        if needs_inpatient:
+            query += " AND inpatient_care = 1"
+        if needs_wild_animal:
+            query += " AND wild_animal_care = 1"
+        if min_rating > 0:
+            query += " AND rating >= ?"
+            params.append(min_rating)
+        
+        cursor = self.conn.cursor()
+        cursor.execute(query, params)
+        
+        columns = [description[0] for description in cursor.description]
+        clinics = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
+        if not clinics:
+            return []
+        
+        recommendations = []
+        for clinic in clinics:
+            score_data = self.calculate_clinic_score(
+                clinic, user_location, required_services,
+                required_equipment, max_preferred_price, needs_emergency, max_distance_km
+            )
+            
+            if score_data:
+                recommendations.append(score_data)
+        
+        # Sort by total score
+        recommendations.sort(key=lambda x: x['total_score'], reverse=True)
+        
+        return recommendations[:top_n]
 
 # Database connection
 DB_PATH = "vet_platform.db"
@@ -676,7 +902,7 @@ st.markdown(f"### {t('app_subtitle', lang)}")
 st.sidebar.title(t('navigation', lang))
 page = st.sidebar.radio(
     t('navigation', lang), 
-    [t('search_clinics', lang), t('add_clinic', lang), t('add_review', lang), t('view_all_clinics', lang)],
+    [t('search_clinics', lang), t('ai_recommendations', lang), t('add_clinic', lang), t('add_review', lang), t('view_all_clinics', lang), t('backup_restore', lang)],
     label_visibility="collapsed"
 )
 
@@ -1051,8 +1277,234 @@ if page == t('search_clinics', lang):
         st.info("👆 Use the search filters above and click 'Search' to find veterinary clinics")
 
 
+# AI Recommendations Page
+elif page == t('ai_recommendations', lang):
+    st.header(f"🤖 {t('ai_recommendations_header', lang)}")
+    st.markdown(f"*{t('ai_recommendations_subtitle', lang)}*")
+    
+    st.markdown("---")
+    st.subheader(f"📍 {t('your_location', lang)}")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        user_lat = st.number_input(t('your_latitude', lang), value=42.6977, format="%.6f", key="ai_lat")
+    with col2:
+        user_lon = st.number_input(t('your_longitude', lang), value=23.3219, format="%.6f", key="ai_lon")
+    with col3:
+        max_distance = st.number_input(t('max_distance', lang), value=50.0, min_value=1.0, max_value=500.0, key="ai_dist")
+    
+    st.markdown("---")
+    st.subheader(f"🎯 {t('your_preferences', lang)}")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown(f"**{t('services', lang)}**")
+        
+        # Get available services
+        conn = get_db_connection()
+        services_df = pd.read_sql_query("SELECT DISTINCT service_name FROM services ORDER BY service_name", conn)
+        conn.close()
+        
+        if len(services_df) > 0:
+            service_list = services_df['service_name'].tolist()
+            service_options_translated = [translate_service_name(s, lang) for s in service_list]
+            service_display_to_english = {translate_service_name(s, lang): s for s in service_list}
+            
+            selected_services_display = st.multiselect(
+                t('select_services', lang),
+                options=service_options_translated,
+                key='ai_services'
+            )
+            
+            selected_services = [service_display_to_english[s] for s in selected_services_display]
+        else:
+            selected_services = []
+    
+    with col2:
+        st.markdown(f"**{t('equipment', lang)}**")
+        
+        # Get available equipment
+        conn = get_db_connection()
+        equipment_df = pd.read_sql_query("SELECT DISTINCT equipment_name FROM equipment ORDER BY equipment_name", conn)
+        conn.close()
+        
+        if len(equipment_df) > 0:
+            equipment_list = equipment_df['equipment_name'].tolist()
+            equipment_options_translated = [translate_equipment_name(e, lang) for e in equipment_list]
+            equipment_display_to_english = {translate_equipment_name(e, lang): e for e in equipment_list}
+            
+            selected_equipment_display = st.multiselect(
+                t('select_equipment', lang),
+                options=equipment_options_translated,
+                key='ai_equipment'
+            )
+            
+            selected_equipment = [equipment_display_to_english[e] for e in selected_equipment_display]
+        else:
+            selected_equipment = []
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        needs_emergency = st.checkbox(t('emergency_care', lang), key='ai_emergency')
+        needs_inpatient = st.checkbox(t('inpatient_care', lang), key='ai_inpatient')
+    
+    with col2:
+        needs_wild_animal = st.checkbox(t('wild_animal_care', lang), key='ai_wild')
+        min_rating = st.slider(t('minimum_rating', lang), 0.0, 5.0, 0.0, 0.5, key='ai_rating')
+    
+    with col3:
+        max_price_pref = st.selectbox(
+            t('max_price_pref', lang),
+            options=[t('any_price', lang), '$', '$$', '$$$'],
+            key='ai_price'
+        )
+        
+        # Convert to numeric
+        price_map = {t('any_price', lang): None, '$': 1, '$$': 2, '$$$': 3}
+        max_price_value = price_map[max_price_pref]
+        
+        top_n = st.slider("Top Results", 3, 10, 5, key='ai_topn')
+    
+    st.markdown("---")
+    
+    if st.button(f"🎯 {t('get_recommendations', lang)}", type="primary", use_container_width=True):
+        # Get recommendations
+        conn = get_db_connection()
+        recommender = VetRecommendationEngine(conn)
+        
+        user_location = {'lat': user_lat, 'lon': user_lon}
+        
+        recommendations = recommender.get_recommendations(
+            user_location=user_location,
+            required_services=selected_services if selected_services else None,
+            required_equipment=selected_equipment if selected_equipment else None,
+            max_preferred_price=max_price_value,
+            needs_emergency=needs_emergency,
+            needs_inpatient=needs_inpatient,
+            needs_wild_animal=needs_wild_animal,
+            min_rating=min_rating,
+            max_distance_km=max_distance,
+            top_n=top_n
+        )
+        
+        conn.close()
+        
+        if recommendations:
+            st.success(t('showing_results', lang, count=len(recommendations)))
+            
+            # Display map with recommended clinics
+            st.markdown("---")
+            st.subheader(f"🗺️ {t('clinic_locations', lang)}")
+            
+            # Prepare dataframe for map
+            map_data = []
+            for rec in recommendations:
+                clinic = rec['clinic']
+                map_data.append(clinic)
+            
+            rec_df = pd.DataFrame(map_data)
+            rec_map = create_clinic_map(rec_df, user_location=(user_lat, user_lon), zoom_start=12)
+            st_folium(rec_map, width=None, height=500)
+            
+            st.markdown("---")
+            st.subheader(f"🏆 {t('top_recommendations', lang)}")
+            
+            # Display each recommendation
+            for idx, rec in enumerate(recommendations, 1):
+                clinic = rec['clinic']
+                
+                # Create title with score
+                title = f"#{idx} ⭐ {clinic['name']} - {t('overall_match', lang)}: {rec['total_score']}%"
+                
+                with st.expander(title, expanded=(idx == 1)):
+                    # Score breakdown
+                    st.markdown(f"### 🎯 {t('score_breakdown', lang)}")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric(t('distance_score', lang), f"{rec['distance_score']}%", f"{rec['distance_km']} km")
+                        st.metric(t('rating_score', lang), f"{rec['rating_score']}%", f"⭐ {clinic['rating']:.1f}")
+                    
+                    with col2:
+                        st.metric(t('service_match', lang), f"{rec['overall_match_score']}%")
+                        st.metric(t('price_match', lang), f"{rec['price_match_score']}%")
+                    
+                    with col3:
+                        st.metric(t('emergency_score', lang), f"{rec['emergency_score']}%")
+                        if pd.notna(rec['avg_price_rating']):
+                            st.metric("💰 Price", get_price_rating_display(round(rec['avg_price_rating'])))
+                    
+                    st.markdown("---")
+                    
+                    # Contact information
+                    st.markdown(f"### 📍 {t('contact_info', lang)}")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write(f"**{t('address', lang)}:** {clinic['address']}")
+                        st.write(f"**{t('phone', lang)}:** {clinic['phone']}")
+                        st.write(f"**{t('email', lang)}:** {clinic['email']}")
+                    
+                    with col2:
+                        st.write(f"**{t('coordinates', lang)}:** {clinic['latitude']:.6f}, {clinic['longitude']:.6f}")
+                        st.write(f"**{t('distance_from_you', lang)}:** {rec['distance_km']} km")
+                    
+                    # Care types
+                    care_types = []
+                    if clinic.get('emergency_available', 0):
+                        care_types.append('🚨 ' + t('emergency_care', lang))
+                    if clinic.get('inpatient_care', 0):
+                        care_types.append('🏨 ' + t('inpatient_care', lang))
+                    if clinic.get('wild_animal_care', 0):
+                        care_types.append('🦊 ' + t('wild_animal_care', lang))
+                    
+                    if care_types:
+                        st.markdown(f"**{t('care_types', lang)}:**")
+                        st.write(" | ".join(care_types))
+                    
+                    st.markdown("---")
+                    
+                    # Services and Equipment
+                    conn = get_db_connection()
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"**{t('services_offered', lang)}**")
+                        services_query = pd.read_sql_query(
+                            "SELECT service_name FROM services WHERE clinic_id = ?",
+                            conn, params=(clinic['id'],)
+                        )
+                        if len(services_query) > 0:
+                            for svc in services_query['service_name']:
+                                translated_svc = translate_service_name(svc, lang)
+                                st.write(f"• {translated_svc}")
+                        else:
+                            st.write(f"*{t('not_specified', lang)}*")
+                    
+                    with col2:
+                        st.markdown(f"**{t('equipment_available', lang)}**")
+                        equipment_query = pd.read_sql_query(
+                            "SELECT equipment_name FROM equipment WHERE clinic_id = ?",
+                            conn, params=(clinic['id'],)
+                        )
+                        if len(equipment_query) > 0:
+                            for eq in equipment_query['equipment_name']:
+                                translated_eq = translate_equipment_name(eq, lang)
+                                st.write(f"• {translated_eq}")
+                        else:
+                            st.write(f"*{t('not_specified', lang)}*")
+                    
+                    conn.close()
+        else:
+            st.warning(t('no_recommendations', lang))
+
+
 # Add Clinic Page
-elif page == "Add Clinic":
+elif page == t('add_clinic', lang):
     st.header("🏥 Register New Clinic")
     
     with st.form("add_clinic_form"):
