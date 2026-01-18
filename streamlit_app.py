@@ -108,7 +108,7 @@ TRANSLATIONS = {
         'basic_info': 'Basic Information',
         'clinic_name': 'Clinic Name*',
         'clinic_name_placeholder': 'e.g., Sofia Pet Care',
-        'address_placeholder': 'e.g., 123 Main St, Sofia',
+        'address_placeholder': 'e.g., 123 Iveto St, Sofia',
         'phone_placeholder': 'e.g., +359 2 123 4567',
         'email_placeholder': 'e.g., info@sofiavetcare.com',
         'latitude': 'Latitude',
@@ -1511,7 +1511,7 @@ elif page == t('add_clinic', lang):
         # Basic Information
         st.subheader("Basic Information")
         name = st.text_input("Clinic Name*", placeholder="e.g., Sofia Pet Care")
-        address = st.text_input("Address*", placeholder="e.g., 123 Main St, Sofia")
+        address = st.text_input("Address*", placeholder="e.g., 123 Iveto St, Sofia")
         phone = st.text_input("Phone", placeholder="e.g., +359 2 123 4567")
         email = st.text_input("Email", placeholder="e.g., info@sofiavetcare.com")
         
